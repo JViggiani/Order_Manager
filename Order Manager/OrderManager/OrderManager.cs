@@ -126,7 +126,7 @@ namespace Order_Manager.Order_Manager
                 // Check for end-of-file tag. If it is not there, read   
                 // more data.  
                 content = state.sb.ToString();
-                if (content.IndexOf("<EOF>") > -1)
+                if (content.IndexOf("10=") > -1)
                 {
                     // All the data has been read from the   
                     // client. Display it on the console.  

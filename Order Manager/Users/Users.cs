@@ -75,7 +75,7 @@ namespace Order_Manager.Users
                     "35=A|553=CLIENT|554=PASSWORD"
                     );
                 Console.WriteLine(logonMsg.getFixString());
-                Send(client, "This is a test<EOF>");
+                Send(client, logonMsg.getFixString());
                 sendDone.WaitOne();
 
                 // Receive the response from the remote device.  
