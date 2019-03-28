@@ -6,6 +6,6 @@ namespace Order_Manager.FIX
 {
     interface IFixMessage
     {
-        string parseToString();
+        string getFixString();
     }
 }

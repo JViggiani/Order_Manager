@@ -8,12 +8,13 @@ namespace Order_Manager
 {
     interface IOrderInterface
     {
-        string convertToFixMsg();
+        
     }
 
     // Creator
     interface IOrderFactory
     {
-        Order GetOrder(string rawFixMsg);
+        Order getOrder(FixMessage rawFixMsg);
+        FixMessage convertToFixMsg(string orderType, int orderQuantity, string side, string ticker);
     }
 }
