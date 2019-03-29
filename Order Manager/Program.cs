@@ -22,7 +22,7 @@ namespace Order_Manager
             Thread OrderManagerThread = new Thread(new ThreadStart(orderManager.begin));
             OrderManagerThread.Start();
 
-            Client client = new Client();
+            Client client = new Client("CLIENT1");
             Thread ClientThread = new Thread(new ThreadStart(client.begin));
             ClientThread.Start();
         }

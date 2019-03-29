@@ -11,7 +11,8 @@ namespace Order_Manager.Users
 {
     public abstract class User : IUsers
     {
-        private string Id { get; set; }
+        protected string userId { get; set; }
+        protected int msgSeqNum { get; set; }
 
         public void begin()
         {
@@ -38,6 +39,9 @@ namespace Order_Manager.Users
         // The port number for the remote device.  
         private const int port = 11000;
 
+        //The socket to connect to the order manager.
+        private Socket orderSocket;
+
         // ManualResetEvent instances signal completion.  
         private static ManualResetEvent connectDone =
             new ManualResetEvent(false);
@@ -49,14 +53,14 @@ namespace Order_Manager.Users
         // The response from the remote device.  
         private static String response = String.Empty;
 
-        protected static void StartClient()
+        protected void StartClient()    //JOSH should this be static?
         {
             // Connect to a remote device.  
             try
             {
                 // Establish the remote endpoint for the socket.  
                 // The name of the   
-                // remote device is "host.contoso.com".  
+                // remote device is "Josh-PC".  
                 IPHostEntry ipHostInfo = Dns.GetHostEntry("Josh-PC");
                 IPAddress ipAddress = ipHostInfo.AddressList[0];
                 IPEndPoint remoteEP = new IPEndPoint(ipAddress, port);
@@ -64,30 +68,19 @@ namespace Order_Manager.Users
                 // Create a TCP/IP socket.  
                 Socket client = new Socket(ipAddress.AddressFamily,
                     SocketType.Stream, ProtocolType.Tcp);
+                this.orderSocket = client;
 
                 // Connect to the remote endpoint.  
-                client.BeginConnect(remoteEP,
-                    new AsyncCallback(ConnectCallback), client);
+                orderSocket.BeginConnect(remoteEP,
+                    new AsyncCallback(ConnectCallback), orderSocket);
                 connectDone.WaitOne();
 
-                // Send logon data to the remote device.  
-                FixMessage logonMsg = new FixMessage(
-                    "35=A|553=CLIENT|554=PASSWORD"
-                    );
-                Console.WriteLine(logonMsg.getFixString());
-                Send(client, logonMsg.getFixString());
-                sendDone.WaitOne();
-
-                // Receive the response from the remote device.  
-                Receive(client);
-                receiveDone.WaitOne();
-
-                // Write the response to the console.  
-                Console.WriteLine("Response received : {0}", response);
+                //Send a logon FIX message and handle the heartbeat signals
+                logonAndBeginHeartbeat(5000);
 
                 // Release the socket.  
-                client.Shutdown(SocketShutdown.Both);
-                client.Close();
+                orderSocket.Shutdown(SocketShutdown.Both);
+                orderSocket.Close();
 
             }
             catch (Exception e)
@@ -202,6 +195,45 @@ namespace Order_Manager.Users
             {
                 Console.WriteLine(e.ToString());
             }
+        }
+        
+        private void startHeartbeat(int interval)
+        {
+            try
+            {
+                FixMessage heartbeat = new FixMessage("");
+                while (orderSocket.Connected)
+                {
+                    System.Threading.Thread.Sleep(interval);
+
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+            }
+        }
+        
+        private void logonAndBeginHeartbeat(int heartbeatInterval)
+        {
+            // Send logon data to the remote device.  
+            FixMessage logonMsg = new FixMessage(
+                "35=A|553=USER|554=PASSWORD"
+                );
+            logonMsg.setHeartBeatInterval(5000);
+            logonMsg.setSenderId(userId);
+            logonMsg.setTargetId("ORDERMGR");
+            logonMsg.setMsgSeqNum(this.msgSeqNum++);
+            logonMsg.setSendingTime(DateTime.Now.ToString());
+            Send(orderSocket, logonMsg.getFixString());
+            sendDone.WaitOne();
+
+            // Receive the response from the remote device.  
+            Receive(orderSocket);
+            receiveDone.WaitOne();
+
+            // Write the response to the console.  
+            Console.WriteLine("Response received : {0}", response);
         }
     }
 }

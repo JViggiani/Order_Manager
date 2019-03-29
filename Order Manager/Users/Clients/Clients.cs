@@ -8,6 +8,11 @@ namespace Order_Manager.Users.Clients
 {
     class Client : User, IClients
     {
+        public Client(string userId)
+        {
+            this.userId = userId;
+        }
+
         public void begin()
         {
             Thread socketHandler = new Thread(new ThreadStart(StartClient));

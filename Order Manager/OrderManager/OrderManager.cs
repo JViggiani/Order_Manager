@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using Order_Manager.Exchanges;
+using Order_Manager.FIX;
 using Order_Manager.Orders;
 
 
@@ -126,13 +127,15 @@ namespace Order_Manager.Order_Manager
                 // Check for end-of-file tag. If it is not there, read   
                 // more data.  
                 content = state.sb.ToString();
+                FixMessage fixMessageRecieved = new FixMessage(content);
                 if (content.IndexOf("10=") > -1)
                 {
                     // All the data has been read from the   
                     // client. Display it on the console.  
                     Console.WriteLine("Read {0} bytes from socket. \n Data : {1}",
                         content.Length, content);
-                    // Echo the data back to the client.  
+
+                    // Echo the message back to the client.  
                     Send(handler, content);
                 }
                 else
