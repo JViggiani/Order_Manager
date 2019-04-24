@@ -61,14 +61,13 @@ namespace Order_Manager.Users
                 // Establish the remote endpoint for the socket.  
                 // The name of the   
                 // remote device is "Josh-PC".  
-                IPHostEntry ipHostInfo = Dns.GetHostEntry("Josh-PC");
+                IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
                 IPAddress ipAddress = ipHostInfo.AddressList[0];
                 IPEndPoint remoteEP = new IPEndPoint(ipAddress, port);
 
                 // Create a TCP/IP socket.  
-                Socket client = new Socket(ipAddress.AddressFamily,
+                orderSocket = new Socket(ipAddress.AddressFamily,
                     SocketType.Stream, ProtocolType.Tcp);
-                this.orderSocket = client;
 
                 // Connect to the remote endpoint.  
                 orderSocket.BeginConnect(remoteEP,
@@ -167,10 +166,12 @@ namespace Order_Manager.Users
             }
         }
 
-        protected static void Send(Socket client, String data)
+        protected void Send(Socket client, Fix fixMsg)
         {
+            fixMsg.wrapMessageHeaderTrailer(this.userId, client.AddressFamily.ToString(), this.msgSeqNum++, DateTime.Now.ToString());
+            
             // Convert the string data to byte data using ASCII encoding.  
-            byte[] byteData = Encoding.ASCII.GetBytes(data);
+            byte[] byteData = Encoding.ASCII.GetBytes(fixMsg.getFixString());
 
             // Begin sending the data to the remote device.  
             client.BeginSend(byteData, 0, byteData.Length, 0,
@@ -217,15 +218,8 @@ namespace Order_Manager.Users
         private void logonAndBeginHeartbeat(int heartbeatInterval)
         {
             // Send logon data to the remote device.  
-            FixMessage logonMsg = new FixMessage(
-                "35=A|553=USER|554=PASSWORD"
-                );
-            logonMsg.setHeartBeatInterval(5000);
-            logonMsg.setSenderId(userId);
-            logonMsg.setTargetId("ORDERMGR");
-            logonMsg.setMsgSeqNum(this.msgSeqNum++);
-            logonMsg.setSendingTime(DateTime.Now.ToString());
-            Send(orderSocket, logonMsg.getFixString());
+            FixLogon logonMsg = new FixLogon("5000");
+            Send(orderSocket, logonMsg);
             sendDone.WaitOne();
 
             // Receive the response from the remote device.  
@@ -234,6 +228,14 @@ namespace Order_Manager.Users
 
             // Write the response to the console.  
             Console.WriteLine("Response received : {0}", response);
+
+            //while true, send heartbeat signals and listen for a response. if response, send another
+            //after 3 failures, disconnect
+            FixHeartbeat heartbeat = new FixHeartbeat();
+            while(this.orderSocket.Connected) //JOSH todo change this to "while we have recieved a response in the last x seconds
+            {
+                
+            }
         }
     }
 }

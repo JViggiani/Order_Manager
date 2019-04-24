@@ -4,6 +4,10 @@ using System.Text;
 
 namespace Order_Manager.FIX
 {
+    interface IFix
+    {
+    }
+
     interface IFixMessage
     {
         string getFixString();
