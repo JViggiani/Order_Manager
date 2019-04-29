@@ -14,13 +14,18 @@ namespace Order_Manager.Users
         protected string userId { get; set; }
         protected int msgSeqNum { get; set; }
 
+        protected Queue<Fix> orderQueue;
+
         public void begin()
         {
             Thread socketHandler = new Thread(new ThreadStart(StartClient));
+            socketHandler.Name = this.userId + "_thread";
             socketHandler.Start();
 
+            /*
             OrderFactory orderFactory = new OrderFactory();
             Order testorder = orderFactory.getOrder(new FixMessage("a"));
+            */
         }
 
         // State object for receiving data from remote device.  
@@ -71,7 +76,8 @@ namespace Order_Manager.Users
 
                 // Connect to the remote endpoint.  
                 orderSocket.BeginConnect(remoteEP,
-                    new AsyncCallback(ConnectCallback), orderSocket);
+                    new AsyncCallback(ConnectCallback), 
+                    orderSocket);
                 connectDone.WaitOne();
 
                 //Send a logon FIX message and handle the heartbeat signals
@@ -232,9 +238,16 @@ namespace Order_Manager.Users
             //while true, send heartbeat signals and listen for a response. if response, send another
             //after 3 failures, disconnect
             FixHeartbeat heartbeat = new FixHeartbeat();
-            while(this.orderSocket.Connected) //JOSH todo change this to "while we have recieved a response in the last x seconds
+
+            while(this.orderSocket.Connected) //JOSH todo change this to "while we have recieved a response in the last x seconds - 
             {
-                
+                Send(orderSocket, heartbeat);
+
+                Receive(orderSocket);
+                receiveDone.WaitOne();
+
+                // Write the response to the console.  
+                Console.WriteLine("Response received : {0}", response);
             }
         }
     }

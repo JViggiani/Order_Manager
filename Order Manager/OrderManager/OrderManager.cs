@@ -28,11 +28,7 @@ namespace Order_Manager.Order_Manager
         }
         //End of singleton implementation//
 
-        public void begin()
-        {
-            Thread socketHandler = new Thread(new ThreadStart(this.startListening));
-            socketHandler.Start();
-        }
+        
 
         private class StateObject
         {
@@ -49,27 +45,48 @@ namespace Order_Manager.Order_Manager
         // Thread signal.  
         public static ManualResetEvent allDone = new ManualResetEvent(false);
 
+        //Port currently being searched to find new connections
+        private int currentPort = 11000;
+
+        //List of active sockets
+        private List<StateObject> connectedUsers = new List<StateObject>();
+
+
+
+        public void begin()
+        {
+            Thread newConnections = new Thread(new ThreadStart(this.startListening));
+            newConnections.Name = "NEWCONNECTIONS";
+            newConnections.Start();
+
+
+        }
+
         private void startListening()
         {
-            // Establish the local endpoint for the socket.  
-            // The DNS name of the computer  
-            // running the listener is "host.contoso.com".  
-            IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
-            IPAddress ipAddress = ipHostInfo.AddressList[0];
-            IPEndPoint localEndPoint = new IPEndPoint(ipAddress, 11000);
-
-            // Create a TCP/IP socket.  
-            Socket listener = new Socket(ipAddress.AddressFamily,
-                SocketType.Stream, ProtocolType.Tcp);
-
             // Bind the socket to the local endpoint and listen for incoming connections.  
             try
-            {
-                listener.Bind(localEndPoint);
-                listener.Listen(100);
+            {               
+
+                //JOSH gameplan: Have the listener listen for new ports. When it finds one, add the socket / stateobject to a list. Update the port number =+ 1
+                    // Have a separate thread scan the sockets on the list while true. If it has data available, then do socket.BeginAccept(...acceptcallback...) 
 
                 while (true)
                 {
+                    // Establish the local endpoint for the socket.  
+                    // The DNS name of the computer  
+                    // running the listener is "host.contoso.com".  
+                    IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
+                    IPAddress ipAddress = ipHostInfo.AddressList[0];
+                    IPEndPoint localEndPoint = new IPEndPoint(ipAddress, this.currentPort);
+
+                    // Create a TCP/IP socket.  
+                    Socket listener = new Socket(ipAddress.AddressFamily,
+                        SocketType.Stream, ProtocolType.Tcp);
+
+                    listener.Bind(localEndPoint);
+                    listener.Listen(100);
+
                     // Set the event to nonsignaled state.  
                     allDone.Reset();
 
@@ -78,6 +95,9 @@ namespace Order_Manager.Order_Manager
                     listener.BeginAccept(
                         new AsyncCallback(AcceptCallback),
                         listener);
+
+                    Console.WriteLine("New connection found. Now listening on port " + this.currentPort);
+                    currentPort += 1;
 
                     // Wait until a connection is made before continuing.  
                     allDone.WaitOne();
@@ -90,7 +110,7 @@ namespace Order_Manager.Order_Manager
             }
         }
 
-        private static void AcceptCallback(IAsyncResult ar)
+        private void AcceptCallback(IAsyncResult ar)
         {
             // Signal the main thread to continue.  
             allDone.Set();
@@ -168,9 +188,8 @@ namespace Order_Manager.Order_Manager
                 int bytesSent = handler.EndSend(ar);
                 Console.WriteLine("Sent {0} bytes to client.", bytesSent);
 
-                handler.Shutdown(SocketShutdown.Both);
+                handler.Shutdown(SocketShutdown.Both);  //JOSH is this the problem?
                 handler.Close();
-
             }
             catch (Exception e)
             {

@@ -20,11 +20,13 @@ namespace Order_Manager
 
             OrderManager orderManager = new OrderManager();
             Thread OrderManagerThread = new Thread(new ThreadStart(orderManager.begin));
+            OrderManagerThread.Name = "ORDERMANAGER_thread";
             OrderManagerThread.Start();
 
             Client client = new Client("CLIENT1");
-            Thread ClientThread = new Thread(new ThreadStart(client.begin));
-            ClientThread.Start();
+            Thread ClientThread1 = new Thread(new ThreadStart(client.begin));
+            ClientThread1.Name = "CLIENT1_thread";
+            ClientThread1.Start();
         }
     }
 }
