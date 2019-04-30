@@ -94,7 +94,7 @@ namespace Order_Manager.Users
             }
         }
 
-        private static void ConnectCallback(IAsyncResult ar)
+        private void ConnectCallback(IAsyncResult ar)
         {
             try
             {
@@ -104,7 +104,7 @@ namespace Order_Manager.Users
                 // Complete the connection.  
                 client.EndConnect(ar);
 
-                Console.WriteLine("Socket connected to {0}",
+                Console.WriteLine(this.userId + ": Socket connected to {0}",
                     client.RemoteEndPoint.ToString());
 
                 // Signal that the connection has been made.  
@@ -126,7 +126,7 @@ namespace Order_Manager.Users
 
                 // Begin receiving the data from the remote device.  
                 client.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0,
-                    new AsyncCallback(ReceiveCallback), state);
+                    new AsyncCallback(ReceiveCallback), state);     //JOSH exception thrown
             }
             catch (Exception e)
             {
@@ -134,6 +134,7 @@ namespace Order_Manager.Users
             }
         }
 
+        //JOSH note there is something wrong with this. It has two threads going throug it at once..
         private static void ReceiveCallback(IAsyncResult ar)
         {
             try
@@ -184,7 +185,7 @@ namespace Order_Manager.Users
                 new AsyncCallback(SendCallback), client);
         }
 
-        private static void SendCallback(IAsyncResult ar)
+        private void SendCallback(IAsyncResult ar)
         {
             try
             {
@@ -193,7 +194,7 @@ namespace Order_Manager.Users
 
                 // Complete sending the data to the remote device.  
                 int bytesSent = client.EndSend(ar);
-                Console.WriteLine("Sent {0} bytes to server.", bytesSent);
+                Console.WriteLine(this.userId + ": Sent {0} bytes to server.", bytesSent);
 
                 // Signal that all bytes have been sent.  
                 sendDone.Set();
@@ -233,7 +234,7 @@ namespace Order_Manager.Users
             receiveDone.WaitOne();
 
             // Write the response to the console.  
-            Console.WriteLine("Response received : {0}", response);
+            Console.WriteLine(this.userId + ": Response received : {0}", response);
 
             //while true, send heartbeat signals and listen for a response. if response, send another
             //after 3 failures, disconnect
@@ -241,13 +242,15 @@ namespace Order_Manager.Users
 
             while(this.orderSocket.Connected) //JOSH todo change this to "while we have recieved a response in the last x seconds - 
             {
+                System.Threading.Thread.Sleep(5000);
+
                 Send(orderSocket, heartbeat);
 
                 Receive(orderSocket);
                 receiveDone.WaitOne();
 
                 // Write the response to the console.  
-                Console.WriteLine("Response received : {0}", response);
+                Console.WriteLine(this.userId + ": Response received : {0}", response);
             }
         }
     }

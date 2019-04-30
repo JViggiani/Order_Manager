@@ -51,7 +51,7 @@ namespace Order_Manager.Order_Manager
         //List of active sockets
         private List<StateObject> connectedUsers = new List<StateObject>();
 
-
+        private string userId = "ORDERMANAGER";
 
         public void begin()
         {
@@ -66,38 +66,46 @@ namespace Order_Manager.Order_Manager
         {
             // Bind the socket to the local endpoint and listen for incoming connections.  
             try
-            {               
+            {
+
+                // Establish the local endpoint for the socket.  
+                // The DNS name of the computer  
+                // running the listener is "host.contoso.com".  
+                IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
+                IPAddress ipAddress = ipHostInfo.AddressList[0];
+                IPEndPoint localEndPoint = new IPEndPoint(ipAddress, this.currentPort);
+
+                // Create a TCP/IP socket.  
+                Socket listener = new Socket(ipAddress.AddressFamily,
+                    SocketType.Stream, ProtocolType.Tcp);
+
+                listener.Bind(localEndPoint);
+                listener.Listen(100);
 
                 //JOSH gameplan: Have the listener listen for new ports. When it finds one, add the socket / stateobject to a list. Update the port number =+ 1
-                    // Have a separate thread scan the sockets on the list while true. If it has data available, then do socket.BeginAccept(...acceptcallback...) 
+                // Have a separate thread scan the sockets on the list while true. If it has data available, then do socket.BeginAccept(...acceptcallback...) 
+                // Change the method to just add the FIX msg to a queue. Then have another thread handling the queue
+
+                //Problem: program stops listening on socket 11000. 
+                    // We accept some message, read the data, then destroy the socket and recreated it in the while loop
+                    // Even if we move the socket binding and listening outside, we get a new exception.. 
+                    //
 
                 while (true)
                 {
-                    // Establish the local endpoint for the socket.  
-                    // The DNS name of the computer  
-                    // running the listener is "host.contoso.com".  
-                    IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
-                    IPAddress ipAddress = ipHostInfo.AddressList[0];
-                    IPEndPoint localEndPoint = new IPEndPoint(ipAddress, this.currentPort);
-
-                    // Create a TCP/IP socket.  
-                    Socket listener = new Socket(ipAddress.AddressFamily,
-                        SocketType.Stream, ProtocolType.Tcp);
-
-                    listener.Bind(localEndPoint);
-                    listener.Listen(100);
+                    Console.WriteLine(this.userId + ": Now listening on port " + this.currentPort);
 
                     // Set the event to nonsignaled state.  
-                    allDone.Reset();
+                    allDone.Reset(); //JOSH in the new list/queue structure this could prevent pairing threads from running 
 
                     // Start an asynchronous socket to listen for connections.  
-                    Console.WriteLine("Waiting for a connection...");
+                    Console.WriteLine(this.userId + ": Waiting for a connection...");
                     listener.BeginAccept(
                         new AsyncCallback(AcceptCallback),
                         listener);
+                    Console.WriteLine(this.userId + ": New connection found");
 
-                    Console.WriteLine("New connection found. Now listening on port " + this.currentPort);
-                    currentPort += 1;
+                    //currentPort += 1;
 
                     // Wait until a connection is made before continuing.  
                     allDone.WaitOne();
@@ -126,7 +134,7 @@ namespace Order_Manager.Order_Manager
                 new AsyncCallback(ReadCallback), state);
         }
 
-        private static void ReadCallback(IAsyncResult ar)
+        private void ReadCallback(IAsyncResult ar)
         {
             String content = String.Empty;
 
@@ -152,7 +160,7 @@ namespace Order_Manager.Order_Manager
                 {
                     // All the data has been read from the   
                     // client. Display it on the console.  
-                    Console.WriteLine("Read {0} bytes from socket. \n Data : {1}",
+                    Console.WriteLine(this.userId + ": Read {0} bytes from socket. \n Data : {1}",
                         content.Length, content);
 
                     // Echo the message back to the client.  
@@ -167,7 +175,7 @@ namespace Order_Manager.Order_Manager
             }
         }
 
-        protected static void Send(Socket handler, String data)
+        protected void Send(Socket handler, String data)
         {
             // Convert the string data to byte data using ASCII encoding.  
             byte[] byteData = Encoding.ASCII.GetBytes(data);
@@ -177,7 +185,7 @@ namespace Order_Manager.Order_Manager
                 new AsyncCallback(SendCallback), handler);
         }
 
-        private static void SendCallback(IAsyncResult ar)
+        private void SendCallback(IAsyncResult ar)
         {
             try
             {
@@ -186,7 +194,7 @@ namespace Order_Manager.Order_Manager
 
                 // Complete sending the data to the remote device.  
                 int bytesSent = handler.EndSend(ar);
-                Console.WriteLine("Sent {0} bytes to client.", bytesSent);
+                Console.WriteLine(this.userId + ": Sent {0} bytes to client.", bytesSent);
 
                 handler.Shutdown(SocketShutdown.Both);  //JOSH is this the problem?
                 handler.Close();
